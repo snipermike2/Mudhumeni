@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Crop Recommendation - Mudhumeni AI</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='plugins/bootstrap/bootstrap.min.css') }}"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Poppins", sans-serif;
+      }
+
+      body {
+        background: #ffffff;
+        min-height: 100vh;
+        padding: 40px 20px;
+        padding-top: 70px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .header h1 {
+        color: #557153;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        color: #666;
+      }
+
+      .form-container {
+        background: #fff;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e0e0e0;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+      }
+
+      input[type="number"] {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+      }
+
+      input[type="number"]:focus {
+        outline: none;
+        border-color: #557153;
+      }
+
+      button {
+        width: 100%;
+        padding: 14px;
+        background: #557153;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      button:hover {
+        background: #495f41;
+      }
+
+      .result-container {
+        margin-top: 30px;
+        padding: 20px;
+        border-radius: 8px;
+        display: none;
+      }
+
+      .result-success {
+        background: #e8f5e9;
+        border: 1px solid #c8e6c9;
+        color: #2e7d32;
+      }
+
+      .result-error {
+        background: #ffebee;
+        border: 1px solid #ffcdd2;
+        color: #c62828;
+      }
+
+      .input-hint {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .loading-spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #557153;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+      }
+
+      .popup-content {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 40px 30px;
+        border-radius: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+        z-index: 1001;
+      }
+
+      .success-icon {
+        font-size: 50px;
+        color: #4caf50;
+        margin-bottom: 15px;
+      }
+
+      .crop-icon {
+        font-size: 40px;
+        margin: 10px 0;
+        color: #557153;
+      }
+
+      .crop-name {
+        font-size: 24px;
+        font-weight: 600;
+        color: #333;
+        margin: 15px 0;
+      }
+
+      .close-popup {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        font-size: 24px;
+        color: #666;
+        cursor: pointer;
+        transition: color 0.3s;
+      }
+
+      .close-popup:hover {
+        color: #333;
+      }
+
+      .popup-content button {
+        margin-top: 20px;
+        padding: 10px 25px;
+        width: auto;
+      }
+
+      .form-select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+        background-color: white;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23333' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 12px;
+      }
+
+      .form-select:focus {
+        outline: none;
+        border-color: #557153;
+      }
+
+      .form-select:hover {
+        border-color: #557153;
+      }
+
+      /* Style for the disabled placeholder */
+      .form-select option[value=""][disabled] {
+        color: #666;
+      }
+
+      .recommendation-text {
+        color: #666;
+        margin-bottom: 15px;
+        font-size: 16px;
+      }
+
+      .recommendation-details {
+        color: #666;
+        font-size: 14px;
+        margin-top: 10px;
+        line-height: 1.4;
+      }
+
+      /* Navigation Styles */
+      .navbar {
+        background: #557153;
+        padding: 15px 30px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+      }
+
+      .navbar-brand {
+        color: white;
+        font-size: 1.5em;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 20px;
+        margin-left: auto;
+      }
+
+      .nav-links a {
+        color: white;
+        text-decoration: none;
+        padding: 5px 15px;
+        border-radius: 20px;
+        transition: background 0.3s;
+      }
+
+      .nav-links a:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .nav-links a.active {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .footer {
+        background: #557153;
+        color: white;
+        padding: 20px 0;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        z-index: 1000;
+      }
+
+      .footer-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .copyright {
+        font-size: 14px;
+      }
+
+      .footer-links {
+        display: flex;
+        gap: 20px;
+      }
+
+      .footer-links a {
+        color: white;
+        text-decoration: none;
+        font-size: 14px;
+        transition: opacity 0.3s;
+      }
+
+      .footer-links a:hover {
+        opacity: 0.8;
+      }
+
+      /* Adjust main content to prevent footer overlap */
+      .container {
+        margin-bottom: 80px;
+      }
+
+      /* History Container Styles */
+      .history-container {
+        background: #fff;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e0e0e0;
+        margin-top: 40px;
+        display: none;
+      }
+
+      .recommendation-history {
+        margin-top: 20px;
+      }
+
+      .btn-view-history {
+        width: 100%;
+        padding: 14px;
+        background: #495f41;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.3s;
+        margin-top: 20px;
+      }
+
+      .btn-view-history:hover {
+        background: #3a4a32;
+      }
+
+      .btn-export {
+        background: #6c757d;
+        margin-top: 20px;
+        width: auto;
+        display: inline-block;
+      }
+
+      .btn-export:hover {
+        background: #5a6268;
+      }
+
+      /* Table Styles */
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      .table th,
+      .table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .table th {
+        background-color: #f8f8f8;
+        color: #333;
+        font-weight: 600;
+      }
+
+      .crop-badge {
+        background: #557153;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .btn-details {
+        background: #f0f0f0;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+        width: auto;
+      }
+
+      .btn-details:hover {
+        background: #e0e0e0;
+      }
+
+      /* Details popup styles */
+      .details-popup {
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .details-section {
+        margin-bottom: 25px;
+      }
+
+      .details-section h4 {
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+        color: #557153;
+      }
+
+      .details-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+      }
+
+      .detail-item {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .detail-label {
+        font-size: 12px;
+        color: #666;
+      }
+
+      .detail-value {
+        font-size: 16px;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .recommendation-result {
+        text-align: center;
+        padding: 20px;
+        background: #f9f9f9;
+        border-radius: 8px;
+      }
+
+      .crop-icon-large {
+        font-size: 60px;
+        margin-bottom: 10px;
+      }
+
+      .crop-name-large {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 15px;
+      }
+
+      .seasonal-advice {
+        font-style: italic;
+        color: #666;
+      }
+
+      /* Pagination styles */
+      .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        gap: 5px;
+      }
+
+      .pagination button {
+        width: auto;
+        padding: 5px 15px;
+        background: #f0f0f0;
+        color: #333;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .pagination button.active {
+        background: #557153;
+        color: white;
+        border-color: #557153;
+      }
+
+      .pagination button:disabled {
+        background: #f9f9f9;
+        color: #aaa;
+        cursor: not-allowed;
+      }
+
+      @media (max-width: 768px) {
+        .details-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Add Navigation Bar -->
+    <nav class="navbar">
+      <a href="{{ url_for('landing') }}" class="navbar-brand">Mudhumeni AI</a>
+      <div class="nav-links">
+        <a href="{{ url_for('landing') }}">Home</a>
+        <a href="{{ url_for('chatbot') }}">Chatbot</a>
+        <a href="{{ url_for('crop_recommendation') }}" class="active"
+          >Crop Recommender</a
+        >
+      </div>
+    </nav>
+
+    <div class="container">
+      <div class="header">
+        <h1>Crop Recommendation System</h1>
+        <p>
+          Enter your soil and environmental parameters to get the best crop
+          recommendation
+        </p>
+      </div>
+
+      <div class="form-container">
+        <form id="recommendation-form">
+          <div class="form-group">
+            <label for="N">Nitrogen (N) Content:</label>
+            <input type="number" id="N" name="N" required step="0.01" />
+            <div class="input-hint">Measured in mg/kg</div>
+          </div>
+
+          <div class="form-group">
+            <label for="P">Phosphorus (P) Content:</label>
+            <input type="number" id="P" name="P" required step="0.01" />
+            <div class="input-hint">Measured in mg/kg</div>
+          </div>
+
+          <div class="form-group">
+            <label for="K">Potassium (K) Content:</label>
+            <input type="number" id="K" name="K" required step="0.01" />
+            <div class="input-hint">Measured in mg/kg</div>
+          </div>
+
+          <div class="form-group">
+            <label for="temperature">Temperature:</label>
+            <input
+              type="number"
+              id="temperature"
+              name="temperature"
+              required
+              step="0.01"
+            />
+            <div class="input-hint">Measured in °C</div>
+          </div>
+
+          <div class="form-group">
+            <label for="humidity">Humidity:</label>
+            <input
+              type="number"
+              id="humidity"
+              name="humidity"
+              required
+              step="0.01"
+            />
+            <div class="input-hint">Measured in %</div>
+          </div>
+
+          <div class="form-group">
+            <label for="ph">pH Level:</label>
+            <input type="number" id="ph" name="ph" required step="0.01" />
+            <div class="input-hint">Scale of 0-14</div>
+          </div>
+
+          <div class="form-group">
+            <label for="rainfall">Rainfall:</label>
+            <input
+              type="number"
+              id="rainfall"
+              name="rainfall"
+              required
+              step="0.01"
+            />
+            <div class="input-hint">Measured in mm</div>
+          </div>
+
+          <div class="form-group">
+            <label for="province">Province:</label>
+            <select id="province" name="province" required class="form-select">
+              <option value="" disabled selected>Select your province</option>
+              <option value="bulawayo">Bulawayo</option>
+              <option value="harare">Harare</option>
+              <option value="manicaland">Manicaland</option>
+              <option value="mashonaland_central">Mashonaland Central</option>
+              <option value="mashonaland_east">Mashonaland East</option>
+              <option value="mashonaland_west">Mashonaland West</option>
+              <option value="masvingo">Masvingo</option>
+              <option value="matabeleland_north">Matabeleland North</option>
+              <option value="matabeleland_south">Matabeleland South</option>
+              <option value="midlands">Midlands</option>
+            </select>
+            <div class="input-hint">
+              Select the province where your farm is located
+            </div>
+          </div>
+
+          <button type="submit">Get Recommendation</button>
+        </form>
+
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          <p>Analyzing your inputs...</p>
+        </div>
+
+        <div id="result" class="result-container"></div>
+      </div>
+
+      <!-- Recommendation History Section -->
+      <div class="history-container" id="history-container">
+        <div class="header">
+          <h2>Your Previous Recommendations</h2>
+          <p>View your crop recommendation history</p>
+        </div>
+
+        <div class="recommendation-history">
+          <div
+            id="history-controls"
+            style="text-align: right; margin-bottom: 15px"
+          >
+            <a
+              href="/export_recommendations"
+              class="btn-export"
+              target="_blank"
+            >
+              <i class="fas fa-download"></i> Export as CSV
+            </a>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Crop</th>
+                  <th>Season</th>
+                  <th>Province</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <!-- History rows will be added here dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <div id="pagination" class="pagination">
+            <!-- Pagination buttons will be added here dynamically -->
+          </div>
+
+          <div
+            id="no-history"
+            class="text-center"
+            style="padding: 20px; display: none"
+          >
+            <p>You don't have any crop recommendations yet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommendation Result Popup -->
+    <div class="popup-overlay" id="result-popup">
+      <div class="popup-content">
+        <i class="fas fa-times close-popup"></i>
+        <i class="fas fa-check-circle success-icon"></i>
+        <p class="recommendation-text">
+          Based on your soil parameters and location, we recommend:
+        </p>
+        <div id="crop-icon"></div>
+        <div class="crop-name" id="crop-name"></div>
+        <p id="seasonal-advice" class="recommendation-details"></p>
+        <button onclick="closePopup('result-popup')">Close</button>
+      </div>
+    </div>
+
+    <!-- Recommendation Details Popup -->
+    <div class="popup-overlay" id="details-popup">
+      <div class="popup-content details-popup">
+        <i class="fas fa-times close-popup"></i>
+        <h3>Recommendation Details</h3>
+        <div class="details-content" id="details-content">
+          <!-- Details will be populated dynamically -->
+        </div>
+        <button onclick="closePopup('details-popup')">Close</button>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="copyright">
+          <p>
+            © <span id="currentYear"></span> Mudhumeni AI. All Rights Reserved.
+          </p>
+        </div>
+        <div class="footer-links">
+          <a href="{{ url_for('landing') }}">Home</a>
+          <a href="{{ url_for('chatbot') }}">Chatbot</a>
+          <a href="{{ url_for('crop_recommendation') }}">Crop Recommender</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // Define crop icons for visual representation
+      const cropIcons = {
+        rice: "🌾",
+        maize: "🌽",
+        jute: "🌿",
+        cotton: "💮",
+        coconut: "🥥",
+        papaya: "🍈",
+        orange: "🍊",
+        apple: "🍎",
+        muskmelon: "🍈",
+        watermelon: "🍉",
+        grapes: "🍇",
+        mango: "🥭",
+        banana: "🍌",
+        pomegranate: "🍎",
+        lentil: "🫘",
+        blackgram: "🫘",
+        mungbean: "🫘",
+        mothbeans: "🫘",
+        pigeonpeas: "🫘",
+        kidneybeans: "🫘",
+        chickpea: "🫘",
+        coffee: "☕",
+      };
+
+      // Pagination state
+      let currentPage = 1;
+      let totalPages = 1;
+      let paginationData = {};
+
+      // Document ready function
+      $(document).ready(function () {
+        // Set current year in footer
+        document.getElementById("currentYear").textContent =
+          new Date().getFullYear();
+
+        // Handle form submission
+        $("#recommendation-form").on("submit", function (e) {
+          e.preventDefault();
+
+          $(".loading").show();
+          $("#result").hide();
+
+          const formData = {
+            N: $("#N").val(),
+            P: $("#P").val(),
+            K: $("#K").val(),
+            temperature: $("#temperature").val(),
+            humidity: $("#humidity").val(),
+            ph: $("#ph").val(),
+            rainfall: $("#rainfall").val(),
+            province: $("#province").val(),
+          };
+
+          $.ajax({
+            url: "/predict_crop",
+            type: "POST",
+            data: formData,
+            success: function (response) {
+              $(".loading").hide();
+
+              if (response.success) {
+                showResultPopup(response);
+              } else {
+                $("#result")
+                  .show()
+                  .removeClass("result-success")
+                  .addClass("result-error")
+                  .html(`<strong>Error:</strong> ${response.error}`);
+              }
+            },
+            error: function () {
+              $(".loading").hide();
+              $("#result")
+                .show()
+                .removeClass("result-success")
+                .addClass("result-error")
+                .html(
+                  "<strong>Error:</strong> Something went wrong. Please try again."
+                );
+            },
+          });
+        });
+
+        // Add view history button
+        $("#recommendation-form").after(
+          '<button id="view-history-btn" class="btn-view-history">' +
+            '<i class="fas fa-history"></i> View Recommendation History</button>'
+        );
+
+        // Toggle history visibility when the button is clicked
+        $("#view-history-btn").on("click", function () {
+          if ($("#history-container").is(":visible")) {
+            $("#history-container").hide();
+            $(this).html(
+              '<i class="fas fa-history"></i> View Recommendation History'
+            );
+          } else {
+            loadRecommendationHistory(1);
+            $(this).html(
+              '<i class="fas fa-times"></i> Hide Recommendation History'
+            );
+          }
+        });
+
+        // Close popup when clicking the X button
+        $(".close-popup").click(function () {
+          const popupId = $(this).closest(".popup-overlay").attr("id");
+          closePopup(popupId);
+        });
+
+        // Close popup when clicking outside
+        $(".popup-overlay").click(function (e) {
+          if (e.target === this) {
+            const popupId = $(this).attr("id");
+            closePopup(popupId);
+          }
+        });
+
+        // Close popup when pressing ESC key
+        $(document).keydown(function (e) {
+          if (e.key === "Escape") {
+            $(".popup-overlay").hide();
+          }
+        });
+      });
+
+      // Function to show the result popup
+      function showResultPopup(data) {
+        const formattedCropName = data.prediction.toLowerCase();
+        const icon = cropIcons[formattedCropName] || "🌱";
+
+        document.getElementById(
+          "crop-icon"
+        ).innerHTML = `<span style="font-size: 60px;">${icon}</span>`;
+        document.getElementById("crop-name").textContent =
+          data.prediction.toUpperCase();
+        document.getElementById("seasonal-advice").textContent =
+          data.seasonal_advice;
+
+        $("#result-popup").show();
+      }
+
+      // Function to close popups
+      function closePopup(popupId) {
+        $(`#${popupId}`).hide();
+      }
+
+      // Function to load recommendation history with pagination
+      function loadRecommendationHistory(page) {
+        currentPage = page || 1;
+
+        $.ajax({
+          url: `/recommendation_history?page=${currentPage}&per_page=5`,
+          type: "GET",
+          success: function (response) {
+            if (response.success) {
+              $("#history-container").show();
+
+              if (response.count > 0) {
+                $("#no-history").hide();
+                displayHistoryTable(response.recommendations);
+
+                // Update pagination data
+                paginationData = response.pagination;
+                totalPages = paginationData.total_pages;
+
+                // Render pagination controls
+                renderPagination();
+              } else {
+                $("#history-table-body").empty();
+                $("#pagination").empty();
+                $("#no-history").show();
+              }
+            } else {
+              console.error("Error fetching history:", response.error);
+              $("#no-history")
+                .text("Error loading recommendation history: " + response.error)
+                .show();
+            }
+          },
+          error: function (error) {
+            console.error("Error fetching history:", error);
+            $("#no-history")
+              .text("Error loading recommendation history. Please try again.")
+              .show();
+          },
+        });
+      }
+
+      // Function to display history in table
+      function displayHistoryTable(recommendations) {
+        const tableBody = $("#history-table-body");
+        tableBody.empty();
+
+        recommendations.forEach((rec) => {
+          const formattedDate = new Date(
+            rec.recommendation_date
+          ).toLocaleString();
+          const crop = rec.outputs.predicted_crop;
+          const season = rec.outputs.season;
+          const province = rec.inputs.province || "Not specified";
+
+          const row = `
+                    <tr>
+                        <td>${formattedDate}</td>
+                        <td><span class="crop-badge">${crop.toUpperCase()}</span></td>
+                        <td>${
+                          season.charAt(0).toUpperCase() + season.slice(1)
+                        }</td>
+                        <td>${
+                          province.charAt(0).toUpperCase() +
+                          province.slice(1).replace("_", " ")
+                        }</td>
+                        <td>
+                            <button class="btn-details" onclick="showRecommendationDetails('${
+                              rec.recommendation_id
+                            }')">
+                                <i class="fas fa-info-circle"></i> Details
+                            </button>
+                        </td>
+                    </tr>
+                `;
+          tableBody.append(row);
+        });
+      }
+
+      // Function to render pagination controls
+      function renderPagination() {
+        const pagination = $("#pagination");
+        pagination.empty();
+
+        if (totalPages <= 1) {
+          pagination.hide();
+          return;
+        }
+
+        pagination.show();
+
+        // Previous button
+        pagination.append(`
+                <button ${
+                  currentPage === 1 ? "disabled" : ""
+                } onclick="loadRecommendationHistory(${currentPage - 1})">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            `);
+
+        // Page numbers
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, startPage + 4);
+
+        for (let i = startPage; i <= endPage; i++) {
+          pagination.append(`
+                    <button class="${
+                      i === currentPage ? "active" : ""
+                    }" onclick="loadRecommendationHistory(${i})">
+                        ${i}
+                    </button>
+                `);
+        }
+
+        // Next button
+        pagination.append(`
+                <button ${
+                  currentPage === totalPages ? "disabled" : ""
+                } onclick="loadRecommendationHistory(${currentPage + 1})">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            `);
+      }
+
+      // Function to show recommendation details
+      function showRecommendationDetails(recommendationId) {
+        $.ajax({
+          url: "/recommendation_history",
+          type: "GET",
+          success: function (response) {
+            if (response.success) {
+              const recommendation = response.recommendations.find(
+                (r) => r.recommendation_id === recommendationId
+              );
+              if (recommendation) {
+                displayDetailsPopup(recommendation);
+              } else {
+                console.error("Recommendation not found");
+              }
+            } else {
+              console.error(
+                "Error fetching recommendation details:",
+                response.error
+              );
+            }
+          },
+          error: function (error) {
+            console.error("Error fetching recommendation details:", error);
+          },
+        });
+      }
+
+      // Function to display details popup
+      function displayDetailsPopup(recommendation) {
+        const detailsContent = $("#details-content");
+        detailsContent.empty();
+
+        const inputs = recommendation.inputs;
+        const outputs = recommendation.outputs;
+        const recDate = new Date(
+          recommendation.recommendation_date
+        ).toLocaleString();
+
+        // Format the content
+        const content = `
+                <div class="details-section">
+                    <h4>Soil & Environment Parameters</h4>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Nitrogen (N):</span>
+                            <span class="detail-value">${
+                              inputs.nitrogen
+                            } mg/kg</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Phosphorus (P):</span>
+                            <span class="detail-value">${
+                              inputs.phosphorus
+                            } mg/kg</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Potassium (K):</span>
+                            <span class="detail-value">${
+                              inputs.potassium
+                            } mg/kg</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Temperature:</span>
+                            <span class="detail-value">${
+                              inputs.temperature
+                            } °C</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Humidity:</span>
+                            <span class="detail-value">${
+                              inputs.humidity
+                            }%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">pH Level:</span>
+                            <span class="detail-value">${inputs.ph}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Rainfall:</span>
+                            <span class="detail-value">${
+                              inputs.rainfall
+                            } mm</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Province:</span>
+                            <span class="detail-value">${
+                              inputs.province
+                                ? inputs.province.charAt(0).toUpperCase() +
+                                  inputs.province.slice(1).replace("_", " ")
+                                : "Not specified"
+                            }</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="details-section">
+                    <h4>Recommendation</h4>
+                    <div class="recommendation-result">
+                        <div class="crop-icon-large">${getCropIcon(
+                          outputs.predicted_crop
+                        )}</div>
+                        <div class="crop-name-large">${outputs.predicted_crop.toUpperCase()}</div>
+                        <div class="seasonal-advice">${
+                          outputs.seasonal_advice
+                        }</div>
+                    </div>
+                </div>
+                
+                <div class="details-section">
+                    <h4>Recommendation Date</h4>
+                    <p>${recDate}</p>
+                </div>
+            `;
+
+        detailsContent.html(content);
+        $("#details-popup").show();
+      }
+
+      // Helper function to get crop icon
+      function getCropIcon(cropName) {
+        const formattedCropName = cropName.toLowerCase();
+        return cropIcons[formattedCropName] || "🌱";
+      }
+
+      // Helper function to format province name
+      function formatProvince(province) {
+        if (!province) return "Not specified";
+
+        // Replace underscores with spaces and capitalize each word
+        return province
+          .split("_")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+      }
+    </script>
+  </body>
+</html>
