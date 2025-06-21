@@ -1,4 +1,4 @@
-# Complete app.py with AI-powered USSD
+# Complete app.py with AI-powered USSD - Fixed for deployment
 
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, make_response, redirect, url_for
 from langchain_groq import ChatGroq
@@ -72,19 +72,24 @@ seasonal_crops = {
 def initialize_llm():
     """Initializes the Groq language model with Llama."""
     
-    api_key = os.environ.get("GROQ_API_KEY", "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")
+    api_key = os.environ.get("GROQ_API_KEY")
     
     if not api_key:
-        raise ValueError("GROQ_API_KEY environment variable not set")
+        print("WARNING: GROQ_API_KEY not found in environment variables")
+        return None
     
-    # Initialize Groq with Llama
-    llm = ChatGroq(
-        groq_api_key=api_key,
-        model_name="llama-3.3-70b-versatile",
-        temperature=0.2,
-        max_tokens=4096,
-    )
-    return llm
+    try:
+        # Initialize Groq with Llama
+        llm = ChatGroq(
+            groq_api_key=api_key,
+            model_name="llama-3.3-70b-versatile",
+            temperature=0.2,
+            max_tokens=4096,
+        )
+        return llm
+    except Exception as e:
+        print(f"Error initializing LLM: {str(e)}")
+        return None
 
 # MongoDB Connection Setup
 def setup_mongodb():
@@ -111,7 +116,6 @@ def setup_mongodb():
         return None
 
 # AI-Powered USSD Handler
-
 @app.route('/ussd', methods=['POST'])
 def ussd_handler():
     """AI-Powered USSD handler"""
@@ -305,7 +309,7 @@ def ussd_handler():
                         crops = ", ".join(seasonal_crops[season][:3])
                         return f"END 🌾 {season} season crops: {crops}"
                         
-        # Handle location, farming type, language settings (same as before)
+        # Handle location, farming type, language settings
         elif main_choice == '4':  # Set Location
             locations = {'1': 'Harare', '2': 'Bulawayo', '3': 'Manicaland', '4': 'Mashonaland Central', '5': 'Other'}
             location = locations.get(sub_choice, 'Unknown')
@@ -362,242 +366,6 @@ def ussd_handler():
                 return f"END 🌱 {user_question.title()} is grown in Southern Africa. For detailed info, visit our web platform."
         
     return "END Session too long. Please start again."
-
-def handle_ai_chat(user_session, navigation, current_choice):
-    """Handle AI chatbot conversations via USSD"""
-    user_id = user_session['user_id']
-    
-    if len(navigation) == 1 and current_choice == '0':
-        user_session['mode'] = 'chat'
-        return "CON 🤖 Mudhumeni AI Chat\nAsk me any farming question!\n\nType 'menu' to return to main menu.\n\nYour question:"
-    
-    elif user_session['mode'] == 'chat':
-        if current_choice.lower() == 'menu':
-            user_session['mode'] = 'menu'
-            user_session['conversation_history'] = []
-            return "CON " + MAIN_MENU
-        else:
-            try:
-                ai_response = get_ussd_ai_response(current_choice, user_id, user_session['conversation_history'])
-                user_session['conversation_history'].append({'role': 'user', 'content': current_choice})
-                user_session['conversation_history'].append({'role': 'assistant', 'content': ai_response})
-                
-                formatted_response = format_ussd_response(ai_response)
-                return f"END {formatted_response}\n\n💬 To continue chatting, dial {request.form.get('serviceCode', '*123#')} again"
-                
-            except Exception as e:
-                print(f"AI Response Error: {str(e)}")
-                return "END Sorry, I'm having trouble right now. Please try again later."
-
-def handle_menu_navigation(user_session, navigation, current_choice):
-    """Handle traditional menu navigation with AI integration"""
-    user_id = user_session['user_id']
-    
-    if len(navigation) == 1:
-        if current_choice == '1':
-            return "CON 🌱 Farming Advice:\n1. Planting Times\n2. Fertilizer Use\n3. Pest Control\n4. Irrigation\n5. Harvesting\n6. Ask Custom Question"
-        elif current_choice == '2':
-            return "CON 🌽 Crop Recommendations:\n1. Best crops for my area\n2. Soil analysis guide\n3. Seasonal recommendations\n4. Ask about specific crop"
-        elif current_choice == '3':
-            season = get_current_season()
-            try:
-                query = f"Give me current season information for {season} in Southern Africa including recommended crops and activities"
-                ai_response = get_ussd_ai_response(query, user_id, [])
-                formatted_response = format_ussd_response(ai_response)
-                return f"END 🌿 {season.title()} Season Info:\n{formatted_response}"
-            except:
-                crops = ", ".join(seasonal_crops[season][:3])
-                return f"END 🌿 Current season: {season}\nRecommended crops: {crops}\nFocus: planting, maintenance, harvesting"
-        elif current_choice == '4':
-            return "CON 📍 Select Your Province:\n1. Harare\n2. Bulawayo\n3. Manicaland\n4. Mashonaland Central\n5. Other"
-        elif current_choice == '5':
-            return "CON 🚜 Select Farming Type:\n1. Subsistence\n2. Small-scale commercial\n3. Large-scale commercial\n4. Mixed farming"
-        elif current_choice == '6':
-            return "CON 🗣️ Select Language:\n1. English\n2. Shona\n3. Ndebele\n4. Afrikaans"
-        else:
-            return "CON Invalid selection. " + MAIN_MENU
-            
-    elif len(navigation) == 2:
-        main_choice = navigation[0]
-        sub_choice = current_choice
-        
-        if main_choice == '1':  # Farming Advice
-            if sub_choice == '6':
-                return "CON ❓ Ask your farming question:"
-            else:
-                topics = {
-                    '1': 'planting times and schedules for crops in Southern Africa',
-                    '2': 'fertilizer application and nutrient management for Southern African farming',
-                    '3': 'pest and disease control methods for Southern African crops',
-                    '4': 'irrigation techniques and water management for Southern African climate',
-                    '5': 'harvesting practices and post-harvest handling for Southern African crops'
-                }
-                
-                topic = topics.get(sub_choice)
-                if topic:
-                    try:
-                        ai_response = get_ussd_ai_response(f"Give me practical advice about {topic}", user_id, [])
-                        formatted_response = format_ussd_response(ai_response)
-                        return f"END 💡 {formatted_response}"
-                    except:
-                        return get_static_advice_response(sub_choice)
-                        
-        elif main_choice == '2':  # Crop Recommendations
-            if sub_choice == '4':
-                return "CON 🌱 Which crop? (e.g. maize, tobacco, cotton):"
-            else:
-                queries = {
-                    '1': f"What are the best crops for {user_preferences.get(user_id, {}).get('location', 'Southern Africa')} during {get_current_season()} season?",
-                    '2': "How do I analyze my soil for crop selection in Southern Africa?",
-                    '3': f"What crops should I plant during {get_current_season()} season in Southern Africa?"
-                }
-                
-                query = queries.get(sub_choice)
-                if query:
-                    try:
-                        ai_response = get_ussd_ai_response(query, user_id, [])
-                        formatted_response = format_ussd_response(ai_response)
-                        return f"END 🌾 {formatted_response}"
-                    except:
-                        return get_static_crop_response(sub_choice, user_id)
-                        
-        elif main_choice == '4':  # Set Location
-            locations = {'1': 'Harare', '2': 'Bulawayo', '3': 'Manicaland', '4': 'Mashonaland Central', '5': 'Other'}
-            location = locations.get(sub_choice, 'Unknown')
-            user_preferences[user_id]['location'] = location
-            return f"END 📍 Location set to: {location}\nPreferences saved!"
-            
-        elif main_choice == '5':  # Set Farming Type
-            farming_types = {'1': 'Subsistence', '2': 'Small-scale commercial', '3': 'Large-scale commercial', '4': 'Mixed farming'}
-            farming_type = farming_types.get(sub_choice, 'Unknown')
-            user_preferences[user_id]['farming_type'] = farming_type
-            return f"END 🚜 Farming type set to: {farming_type}\nPreferences saved!"
-            
-        elif main_choice == '6':  # Set Language
-            languages = {'1': 'English', '2': 'Shona', '3': 'Ndebele', '4': 'Afrikaans'}
-            language = languages.get(sub_choice, 'English')
-            user_preferences[user_id]['language'] = language
-            return f"END 🗣️ Language set to: {language}\nPreferences saved!"
-            
-    elif len(navigation) == 3:
-        main_choice = navigation[0]
-        sub_choice = navigation[1]
-        user_question = current_choice
-        
-        if main_choice == '1' and sub_choice == '6':  # Custom farming question
-            try:
-                ai_response = get_ussd_ai_response(user_question, user_id, [])
-                formatted_response = format_ussd_response(ai_response)
-                return f"END 💡 {formatted_response}"
-            except:
-                return "END Sorry, couldn't process your question. Please try again later."
-                
-        elif main_choice == '2' and sub_choice == '4':  # Specific crop question
-            try:
-                query = f"Tell me about growing {user_question} in Southern Africa - planting, care, and harvesting tips"
-                ai_response = get_ussd_ai_response(query, user_id, [])
-                formatted_response = format_ussd_response(ai_response)
-                return f"END 🌱 {user_question.title()}:\n{formatted_response}"
-            except:
-                return f"END 🌱 {user_question.title()} is grown in Southern Africa. For detailed info, visit our web platform."
-        
-    return "END Session too long. Please start again."
-
-def get_ussd_ai_response(question, user_id, conversation_history):
-    """Get AI response optimized for USSD format"""
-    global llm
-    
-    system_prompt = generate_ussd_system_prompt(user_id)
-    
-    # Build conversation context (last 2 exchanges only for USSD)
-    context = ""
-    if conversation_history:
-        for msg in conversation_history[-4:]:
-            role = "User" if msg['role'] == 'user' else "Assistant"
-            context += f"{role}: {msg['content']}\n"
-    
-    full_prompt = f"""{system_prompt}
-
-{context}User: {question}
-Assistant:"""
-    
-    response = llm.invoke(full_prompt)
-    return response.content
-
-def generate_ussd_system_prompt(user_id=None):
-    """Generate system prompt optimized for USSD responses"""
-    season = get_current_season()
-    user_location = user_preferences.get(user_id, {}).get('location', 'Southern Africa')
-    farming_type = user_preferences.get(user_id, {}).get('farming_type', 'farming')
-    
-    return f"""You are Mudhumeni AI, a practical farming assistant for Southern Africa.
-
-CRITICAL USSD RULES:
-- Keep responses under 120 characters total
-- Use simple, clear language
-- Give only the most important advice
-- Use short sentences
-- Be direct and actionable
-
-Context: {season} season in {user_location}
-User: {farming_type}
-
-Provide brief, practical farming advice."""
-
-def format_ussd_response(response):
-    """Format AI response for USSD constraints"""
-    max_length = 120  # Conservative limit for USSD
-    
-    if len(response) <= max_length:
-        return response
-    
-    # Try to fit complete sentences
-    sentences = response.split('. ')
-    formatted_response = ""
-    
-    for sentence in sentences:
-        if len(formatted_response + sentence + '. ') <= max_length:
-            formatted_response += sentence + '. '
-        else:
-            break
-    
-    # If no complete sentences fit, truncate at word boundary
-    if not formatted_response.strip():
-        words = response.split()
-        formatted_response = ""
-        for word in words:
-            if len(formatted_response + word + ' ') <= max_length - 3:
-                formatted_response += word + ' '
-            else:
-                break
-        formatted_response = formatted_response.strip() + "..."
-    
-    return formatted_response.strip()
-
-def get_static_advice_response(sub_choice):
-    """Fallback static responses"""
-    responses = {
-        '1': "END 🌱 PLANTING:\nMaize: Nov-Dec\nWheat: May-Jun\nBeans: Oct-Nov\nPlant after 25mm rain",
-        '2': "END 🧪 FERTILIZER:\nBasal at planting\nTop dress at 4-6 weeks\n200-400kg/ha compound",
-        '3': "END 🐛 PEST CONTROL:\nCheck weekly\nEarly detection key\nUse registered chemicals",
-        '4': "END 💧 IRRIGATION:\nMaize needs 500-800mm\nCritical: flowering stage\nIrrigate when 50% dry",
-        '5': "END 🌾 HARVESTING:\nMaize: 20-25% moisture\nCheck black layer\nHarvest on dry days"
-    }
-    return responses.get(sub_choice, "END Invalid selection")
-
-def get_static_crop_response(sub_choice, user_id):
-    """Fallback static crop responses"""
-    if sub_choice == '1':
-        season = get_current_season()
-        crops = ", ".join(seasonal_crops[season][:3])
-        return f"END 🌾 {season.title()} crops:\n{crops}\nCheck soil & water needs"
-    elif sub_choice == '2':
-        return "END 🧪 Test N, P, K levels\nCheck pH 6-7\nConsult extension services\nVisit web platform"
-    elif sub_choice == '3':
-        season = get_current_season()
-        crops = ", ".join(seasonal_crops[season][:2])
-        return f"END 🌿 {season.title()} season:\n{crops}\nPlant with good rains"
-    return "END Invalid selection"
 
 # Utility functions
 def sanitize_input(input_string):
@@ -663,6 +431,10 @@ def chatbot_response(user_input, user_id=None):
     try:
         if not user_input.strip():
             return "Please enter a valid question."
+        
+        # If LLM is not available, return a fallback response
+        if llm is None:
+            return "I'm currently unable to provide AI responses. Please try again later or contact support."
         
         # Handle preference setting
         if user_input.lower().startswith("set location:"):
@@ -738,6 +510,10 @@ def crop_recommendation():
 @app.route('/predict_crop', methods=['POST'])
 def predict_crop():
     try:
+        # Check if model files exist
+        if not os.path.exists('model.pkl'):
+            return jsonify({'success': False, 'error': 'Model not found. Please train the model first.'})
+        
         model = pickle.load(open('model.pkl', 'rb'))
         minmaxscaler = pickle.load(open('minmaxscaler.pkl', 'rb'))
         standscaler = pickle.load(open('standscaler.pkl', 'rb'))
@@ -806,14 +582,29 @@ def get_response():
 def about():
     return render_template("about.html")
 
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return render_template('500.html'), 500
+
 if __name__ == '__main__':
     try:
-        model = pickle.load(open('model.pkl', 'rb'))
-        minmaxscaler = pickle.load(open('minmaxscaler.pkl', 'rb'))
-        standscaler = pickle.load(open('standscaler.pkl', 'rb'))
-        print("ML models loaded successfully")
+        # Check if model files exist
+        if os.path.exists('model.pkl') and os.path.exists('minmaxscaler.pkl') and os.path.exists('standscaler.pkl'):
+            model = pickle.load(open('model.pkl', 'rb'))
+            minmaxscaler = pickle.load(open('minmaxscaler.pkl', 'rb'))
+            standscaler = pickle.load(open('standscaler.pkl', 'rb'))
+            print("ML models loaded successfully")
+        else:
+            print("WARNING: ML model files not found. Crop recommendation feature will be limited.")
+            print("Run 'python train_model.py' to train the models.")
     except Exception as e:
         print(f"Error loading ML models: {str(e)}")
         print("Application will run, but crop recommendation may not work properly")
     
-    app.run(debug=True, port=8000)
+    port = int(os.environ.get('PORT', 8000))
+    app.run(debug=False, host='0.0.0.0', port=port)
